@@ -1,0 +1,12 @@
+{
+  "name": "macos-wallpaper",
+  "displayName": "macOS 4K/8K Wallpaper Downloader",
+  "description": "Search and download 4K/8K wallpapers for macOS Retina and ultrawide displays from Wallhaven, Unsplash, Reddit, and Bing.",
+  "version": "1.0.0",
+  "author": "Antigravity Assistant",
+  "suggestedPrompts": [
+    "bana yağmurlu tokyo gecesi neon 4k wallpaper indir",
+    "steve jobs minimalist siyah beyaz 8k arka plan",
+    "kara delik derin uzay ultrawide wallpaper bul ve indir"
+  ]
+}
