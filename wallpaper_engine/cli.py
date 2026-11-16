@@ -9,11 +9,23 @@ import time
 from pathlib import Path
 from typing import List
 
-from .config import load_config, save_config, get_download_dir, RESOLUTIONS
-from .query_parser import parse_prompt
-from .sources import search_wallpapers
-from .downloader import download_wallpaper, DownloadResult
-from .macos_stock import sync_stock_wallpapers
+if __package__ is None or __package__ == "":
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from wallpaper_engine.config import load_config, save_config, get_download_dir, RESOLUTIONS
+    from wallpaper_engine.query_parser import parse_prompt
+    from wallpaper_engine.sources import search_wallpapers
+    from wallpaper_engine.downloader import download_wallpaper, DownloadResult, format_bytes, render_progress_bar
+    from wallpaper_engine.macos_stock import sync_stock_wallpapers
+    from wallpaper_engine.tui import run_tui
+else:
+    from .config import load_config, save_config, get_download_dir, RESOLUTIONS
+    from .query_parser import parse_prompt
+    from .sources import search_wallpapers
+    from .downloader import download_wallpaper, DownloadResult, format_bytes, render_progress_bar
+    from .macos_stock import sync_stock_wallpapers
+    from .tui import run_tui
 
 # ANSI Colors for terminal output
 BOLD = "\033[1m"
@@ -25,30 +37,6 @@ MAGENTA = "\033[35m"
 RED = "\033[31m"
 DIM = "\033[2m"
 RESET = "\033[0m"
-
-def render_progress_bar(current: int, total: int, width: int = 30) -> None:
-    """Print terminal progress bar."""
-    if total <= 0:
-        sys.stdout.write(f"\r  {CYAN}Downloading...{RESET} {current / 1024 / 1024:.2f} MB")
-        sys.stdout.flush()
-        return
-
-    fraction = min(1.0, current / total)
-    filled = int(width * fraction)
-    bar = "█" * filled + "░" * (width - filled)
-    percent = int(fraction * 100)
-    current_mb = current / (1024 * 1024)
-    total_mb = total / (1024 * 1024)
-    sys.stdout.write(f"\r  {CYAN}[{bar}]{RESET} {percent:3d}% ({current_mb:.1f}/{total_mb:.1f} MB)")
-    sys.stdout.flush()
-
-def format_bytes(size: int) -> str:
-    """Format bytes into human readable format."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size < 1024.0:
-            return f"{size:.1f} {unit}"
-        size /= 1024.0
-    return f"{size:.1f} TB"
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -114,6 +102,11 @@ def main() -> int:
         action="store_true",
         help="Download and sync all official 6K macOS stock wallpapers"
     )
+    parser.add_argument(
+        "--ui", "--tui",
+        action="store_true",
+        help="Launch the interactive Terminal Application (TUI)"
+    )
 
     args = parser.parse_args()
 
@@ -134,13 +127,17 @@ def main() -> int:
         stock_dir = base_dir / "macos stock"
         res = sync_stock_wallpapers(stock_dir)
         return 0 if not res["failed"] else 1
+    # Launch Terminal App (TUI) if requested or if no arguments provided in interactive terminal
+    if args.ui or (not prompt_text and not args.macos_stock and not args.set_dir and sys.stdin.isatty()):
+        run_tui()
+        return 0
+
     if not prompt_text:
         parser.print_help()
-        print(f"\n{YELLOW}Örnek kullanım:{RESET}")
+        print(f"\n{YELLOW}İnteraktif Terminal Arayüzü için:{RESET} wallpaper --ui")
         print("  wallpaper \"yağmurlu tokyo gecesi neon\"")
         print("  wallpaper \"steve jobs minimalist\" --res 8k")
         print("  wallpaper \"kara delik uzay\" --ratio 21:9 -n 3")
-        print("  wallpaper \"cyberpunk car\" --dir ~/Desktop/Wallpapers")
         return 1
 
     cfg = load_config()

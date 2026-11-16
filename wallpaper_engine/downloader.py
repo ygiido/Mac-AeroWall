@@ -32,6 +32,30 @@ def slugify(text: str) -> str:
     text = re.sub(r"[\s_-]+", "_", text).strip("_")
     return text[:30] if text else "wallpaper"
 
+def format_bytes(size: int) -> str:
+    """Format bytes into human readable format."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} TB"
+
+def render_progress_bar(current: int, total: int, width: int = 30) -> None:
+    """Print terminal progress bar."""
+    if total <= 0:
+        sys.stdout.write(f"\r  Downloading... {current / 1024 / 1024:.2f} MB")
+        sys.stdout.flush()
+        return
+
+    fraction = min(1.0, current / total)
+    filled = int(width * fraction)
+    bar = "█" * filled + "░" * (width - filled)
+    percent = int(fraction * 100)
+    current_mb = current / (1024 * 1024)
+    total_mb = total / (1024 * 1024)
+    sys.stdout.write(f"\r  [{bar}] {percent:3d}% ({current_mb:.1f}/{total_mb:.1f} MB)")
+    sys.stdout.flush()
+
 def download_wallpaper(
     item: WallpaperItem,
     query_slug: str = "wallpaper",

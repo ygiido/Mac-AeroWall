@@ -1,6 +1,9 @@
 """
 macOS & Apple Official Stock Wallpapers Sync and Updater.
-Syncs all historical and modern macOS 6K, Mac OS 9 5K, and vintage Macintosh wallpapers.
+Syncs:
+1. Official macOS 6K releases (Cheetah -> Sequoia -> Tahoe -> Golden Gate)
+2. Vintage Mac OS 9 & 1984 Macintosh 5K collection
+3. High-end aesthetic, minimalist community MacBook/Apple wallpapers (4K/5K/8K)
 Supports incremental sync, daily auto-check, and macOS notifications.
 """
 
@@ -10,6 +13,8 @@ import ssl
 import subprocess
 import sys
 import time
+import json
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import List, Dict, Tuple
@@ -95,9 +100,12 @@ def notify_user(title: str, message: str, subtitle: str = ""):
     except Exception:
         pass
 
-def fetch_all_stock_urls() -> List[str]:
-    """Scrapes both modern macOS 6K and vintage Mac OS 9 archives."""
-    all_urls = []
+def fetch_all_stock_urls() -> List[Tuple[str, str]]:
+    """
+    Scrapes official macOS 6K, Mac OS 9 5K, and curated aesthetic MacBook wallpapers.
+    Returns list of (url, target_filename).
+    """
+    items: List[Tuple[str, str]] = []
     seen = set()
     ctx = ssl.create_default_context()
     headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
@@ -114,7 +122,9 @@ def fetch_all_stock_urls() -> List[str]:
             for l in links:
                 if l not in seen:
                     seen.add(l)
-                    all_urls.append(l)
+                    raw_name = l.split("/")[-1]
+                    name = FRIENDLY_NAMES.get(raw_name, raw_name)
+                    items.append((l, name))
     except Exception as e:
         print(f"Error fetching macOS 6K links: {e}")
 
@@ -130,31 +140,62 @@ def fetch_all_stock_urls() -> List[str]:
             for l in links9:
                 if l not in seen:
                     seen.add(l)
-                    all_urls.append(l)
+                    raw_name = l.split("/")[-1]
+                    name = FRIENDLY_NAMES.get(raw_name, raw_name)
+                    items.append((l, name))
     except Exception as e:
         print(f"Error fetching Mac OS 9 links: {e}")
 
-    return all_urls
+    # 3. Fetch Curated Aesthetic & Minimal MacBook Wallpapers (Wallhaven 5K/8K API)
+    aesthetic_queries = ["apple minimal", "apple logo", "apple dark", "macbook minimalist"]
+    for query in aesthetic_queries:
+        try:
+            params = {
+                "q": query,
+                "atleast": "3840x2160",
+                "categories": "100",  # general
+                "purity": "100",      # SFW only
+                "sorting": "toplist",
+                "topRange": "1y"
+            }
+            url = f"https://wallhaven.cc/api/v1/search?{urllib.parse.urlencode(params)}"
+            req_wh = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req_wh, timeout=10, context=ctx) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                for img in data.get("data", [])[:3]:  # Top 3 per aesthetic category
+                    img_url = img.get("path")
+                    if img_url and img_url not in seen:
+                        seen.add(img_url)
+                        dim_x = img.get("dimension_x", "4K")
+                        dim_y = img.get("dimension_y", "")
+                        ext = img.get("file_type", "image/jpeg").split("/")[-1]
+                        slug = query.replace(" ", "_")
+                        safe_name = f"Aesthetic_MacBook_{slug}_{dim_x}x{dim_y}_{img.get('id')}.{ext}"
+                        items.append((img_url, safe_name))
+        except Exception:
+            continue
+
+    return items
 
 def sync_stock_wallpapers(target_dir: Path, notify: bool = False, quiet: bool = False) -> Dict[str, any]:
     """
-    Downloads all 6K/5K macOS and Macintosh stock wallpapers into target_dir.
+    Downloads all 6K/5K macOS, Macintosh, and aesthetic MacBook wallpapers into target_dir.
     Skips any already downloaded files.
     Triggers macOS notification if new wallpapers are downloaded.
     """
     target_dir.mkdir(parents=True, exist_ok=True)
-    urls = fetch_all_stock_urls()
+    items = fetch_all_stock_urls()
 
     downloaded = []
     skipped = []
     failed = []
 
     if not quiet:
-        print(f"\n\033[1m\033[35m✦ macOS & Macintosh Stock 5K/6K Wallpaper Senkronizasyonu\033[0m")
-        print(f"\033[2m──────────────────────────────────────────────────────────\033[0m")
-        print(f"Toplam tespit edilen arşiv görseli: \033[36m{len(urls)}\033[0m")
+        print(f"\n\033[1m\033[35m✦ macOS, Macintosh & Minimal MacBook Duvar Kağıdı Senkronizasyonu\033[0m")
+        print(f"\033[2m──────────────────────────────────────────────────────────────────\033[0m")
+        print(f"Toplam taranan arşiv görseli: \033[36m{len(items)}\033[0m")
         print(f"Hedef Klasör: \033[33m{target_dir}\033[0m")
-        print(f"\033[2m──────────────────────────────────────────────────────────\033[0m\n")
+        print(f"\033[2m──────────────────────────────────────────────────────────────────\033[0m\n")
 
     ctx = ssl.create_default_context()
     headers = {
@@ -162,19 +203,17 @@ def sync_stock_wallpapers(target_dir: Path, notify: bool = False, quiet: bool = 
         "Referer": "https://512pixels.net/"
     }
 
-    for idx, url in enumerate(urls, 1):
-        raw_name = url.split("/")[-1]
-        dest_name = FRIENDLY_NAMES.get(raw_name, raw_name)
+    for idx, (url, dest_name) in enumerate(items, 1):
         out_path = target_dir / dest_name
 
         if out_path.exists() and out_path.stat().st_size > 50000:
             if not quiet:
-                print(f"[{idx}/{len(urls)}] \033[33m[Mevcut]\033[0m {dest_name} ({out_path.stat().st_size / 1024 / 1024:.1f} MB)")
+                print(f"[{idx}/{len(items)}] \033[33m[Mevcut]\033[0m {dest_name} ({out_path.stat().st_size / 1024 / 1024:.1f} MB)")
             skipped.append(dest_name)
             continue
 
         if not quiet:
-            print(f"[{idx}/{len(urls)}] \033[32m[İndiriliyor]\033[0m {dest_name}...")
+            print(f"[{idx}/{len(items)}] \033[32m[İndiriliyor]\033[0m {dest_name}...")
         temp_path = target_dir / f"{dest_name}.part"
 
         try:
@@ -203,7 +242,7 @@ def sync_stock_wallpapers(target_dir: Path, notify: bool = False, quiet: bool = 
             failed.append((dest_name, str(e)))
 
     if not quiet:
-        print(f"\n\033[2m──────────────────────────────────────────────────────────\033[0m")
+        print(f"\n\033[2m──────────────────────────────────────────────────────────────────\033[0m")
         print(f"\033[1m\033[32m✓ Senkronizasyon Tamamlandı!\033[0m")
         print(f"Yeni indirilen : \033[32m{len(downloaded)}\033[0m")
         print(f"Zaten mevcut   : \033[33m{len(skipped)}\033[0m")
@@ -214,13 +253,13 @@ def sync_stock_wallpapers(target_dir: Path, notify: bool = False, quiet: bool = 
     # Send macOS notification if new wallpapers were downloaded
     if notify and downloaded:
         notify_user(
-            title="Apple Stock Wallpaper Güncellendi",
-            message=f"{len(downloaded)} yeni duvar kağıdı iCloud Drive klasörünüze eklendi.",
+            title="Mac AeroWall Güncellendi",
+            message=f"{len(downloaded)} yeni MacBook duvar kağıdı iCloud Drive klasörünüze eklendi.",
             subtitle="iCloud Drive / ygiido wallpapers / macos stock"
         )
 
     return {
-        "total": len(urls),
+        "total": len(items),
         "downloaded": len(downloaded),
         "skipped": len(skipped),
         "failed": len(failed)

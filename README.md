@@ -56,16 +56,21 @@ Bu işlem:
 ## 💻 Terminalden Kullanım Örnekleri
 
 ```bash
-# 1. Temel Arama ve İndirme (Varsayılan 4K)
+# 1. İnteraktif Terminal Uygulamasını Başlatma (TUI)
+wallpaper --ui
+# veya doğrudan argümansız:
+wallpaper
+
+# 2. Temel Arama ve İndirme (Varsayılan 4K)
 wallpaper "yağmurlu tokyo gecesi neon"
 
-# 2. Tüm Resmi macOS Stock Duvar Kağıtlarını (6K) Senkronize Etme ve Güncelleme
+# 3. Tüm Resmi ve Minimal MacBook Stock Duvar Kağıtlarını (6K/5K) Senkronize Etme
 wallpaper --macos-stock
 
-# 3. 8K Çözünürlük ve Belirli Sayıda İndirme
-wallpaper "steve jobs minimalist siyah beyaz" --res 8k -n 2
+# 4. Adet Belirterek Çoklu Farklı Görsel İndirme
+wallpaper "steve jobs minimalist siyah beyaz" --res 8k -n 3
 
-# 3. Ultrawide (21:9) Monitör İçin Arama
+# 5. Ultrawide (21:9) Monitör İçin Arama
 wallpaper "kara delik derin uzay" --ratio 21:9
 
 # 4. MacBook Retina (16:10) Ekran Formatı
