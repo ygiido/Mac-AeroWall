@@ -160,6 +160,17 @@ def search_flow():
         print(f"{BOLD}{GREEN}✓ Tüm indirmeler tamamlandı!{RESET}")
         print(f"Görseller iCloud Drive klasörünüzde: {CYAN}{dest_dir}{RESET}\n")
 
+        # Send macOS Notification
+        try:
+            from .macos_stock import notify_user
+            notify_user(
+                title="Mac AeroWall",
+                message=f"{len(downloaded_files)} adet yeni duvar kağıdı indirildi.",
+                subtitle="iCloud Drive / ygiido wallpapers"
+            )
+        except Exception:
+            pass
+
         # Ask to set first image as wallpaper
         try:
             set_choice = input(f"{BOLD}İndirilen ilk görsel masaüstü arka planı yapılsın mı? [e/H]:{RESET} ").strip().lower()

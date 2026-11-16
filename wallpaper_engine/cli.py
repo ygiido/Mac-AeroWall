@@ -273,6 +273,19 @@ def main() -> int:
         print(f"{BOLD}{GREEN}✓ İşlem Tamamlandı!{RESET} {success_count}/{len(items_to_download)} görsel hazır.")
         print(f"{BOLD}Klasör:{RESET} {CYAN}{download_folder}{RESET}\n")
 
+        # Send macOS Notification if new files downloaded
+        new_downloads = [r for r in results if r.success and not r.already_existed]
+        if new_downloads:
+            try:
+                from .macos_stock import notify_user
+                notify_user(
+                    title="Mac AeroWall",
+                    message=f"{len(new_downloads)} adet yeni duvar kağıdı indirildi.",
+                    subtitle="iCloud Drive / ygiido wallpapers"
+                )
+            except Exception:
+                pass
+
     return 0 if any(r.success for r in results) else 1
 
 if __name__ == "__main__":
