@@ -140,6 +140,27 @@ wallpaper plugin/
 │       ├── unsplash.py             # Unsplash sağlayıcısı
 │       └── wallhaven.py            # Wallhaven 4K/8K sağlayıcısı
 ├── install.sh                      # Tek tıkla kurulum betiği
+├── uninstall.sh                    # Tek tıkla temiz kaldırma betiği
 ├── plugin.json                     # Antigravity plugin manifestosu
 └── README.md                       # Detaylı dokümantasyon
 ```
+
+---
+
+## 🗑️ Kaldırma (Uninstall)
+
+Eğer programı sisteminizden tamamen kaldırmak isterseniz:
+
+```bash
+# Seçenek 1: Terminalden
+wallpaper --uninstall
+
+# Seçenek 2: Script ile doğrudan
+./uninstall.sh
+```
+
+Bu işlem:
+* `launchd` arka plan senkronizasyon servisini durdurur ve siler.
+* `~/.local/bin/wallpaper` ve `~/.zshrc` kısayollarını temizler.
+* Antigravity eklenti kaydını ve ayar dosyalarını kaldırır.
+* **Not:** Daha önce indirdiğiniz duvar kağıtlarına (iCloud Drive / ygiido wallpapers) dokunmaz, fotoğraflarınız güvenle saklanır.

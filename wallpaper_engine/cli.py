@@ -107,8 +107,21 @@ def main() -> int:
         action="store_true",
         help="Launch the interactive Terminal Application (TUI)"
     )
+    parser.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="Uninstall Mac AeroWall and remove all system integrations"
+    )
 
     args = parser.parse_args()
+
+    # Handle uninstall
+    if args.uninstall:
+        script_path = Path(__file__).resolve().parent.parent / "uninstall.sh"
+        if script_path.exists():
+            import subprocess
+            subprocess.run(["bash", str(script_path)])
+        return 0
 
     # Handle directory update
     if args.set_dir:
