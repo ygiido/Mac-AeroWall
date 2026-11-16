@@ -1,9 +1,10 @@
 """
-macOS & Apple Official Stock Wallpapers Sync and Updater.
+macOS & Apple Official Stock Wallpapers Sync and Deep Aesthetic Search.
 Syncs:
 1. Official macOS 6K releases (Cheetah -> Sequoia -> Tahoe -> Golden Gate)
 2. Vintage Mac OS 9 & 1984 Macintosh 5K collection
-3. High-end aesthetic, minimalist community MacBook/Apple wallpapers (4K/5K/8K)
+3. High-end aesthetic, minimalist community Apple/MacBook wallpapers (4K/5K/8K)
+   - Apple Logo Minimal, Apple Dark Mode, Monochrome, Studio Display, Vintage Apple, MacBook Pro Retina
 Supports incremental sync, daily auto-check, and macOS notifications.
 """
 
@@ -102,7 +103,7 @@ def notify_user(title: str, message: str, subtitle: str = ""):
 
 def fetch_all_stock_urls() -> List[Tuple[str, str]]:
     """
-    Scrapes official macOS 6K, Mac OS 9 5K, and curated aesthetic MacBook wallpapers.
+    Scrapes official macOS 6K, Mac OS 9 5K, and curated aesthetic Apple/MacBook wallpapers.
     Returns list of (url, target_filename).
     """
     items: List[Tuple[str, str]] = []
@@ -110,7 +111,7 @@ def fetch_all_stock_urls() -> List[Tuple[str, str]]:
     ctx = ssl.create_default_context()
     headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
 
-    # 1. Fetch macOS 6K links
+    # 1. Fetch macOS 6K official links
     try:
         req = urllib.request.Request(MACOS_ARCHIVE_URL, headers=headers)
         with urllib.request.urlopen(req, timeout=15, context=ctx) as r:
@@ -146,31 +147,40 @@ def fetch_all_stock_urls() -> List[Tuple[str, str]]:
     except Exception as e:
         print(f"Error fetching Mac OS 9 links: {e}")
 
-    # 3. Fetch Curated Aesthetic & Minimal MacBook Wallpapers (Wallhaven 5K/8K API)
-    aesthetic_queries = ["apple minimal", "apple logo", "apple dark", "macbook minimalist"]
+    # 3. Deep Aesthetic & Minimal Apple / MacBook Search (Wallhaven 4K/5K/8K API)
+    aesthetic_queries = [
+        "apple minimal",
+        "apple logo",
+        "macbook pro",
+        "apple dark",
+        "macbook minimalist",
+        "studio display",
+        "apple vintage",
+        "apple monochrome"
+    ]
+
     for query in aesthetic_queries:
         try:
             params = {
                 "q": query,
-                "atleast": "3840x2160",
-                "categories": "100",  # general
-                "purity": "100",      # SFW only
-                "sorting": "toplist",
-                "topRange": "1y"
+                "atleast": "2560x1440",
+                "categories": "111",
+                "purity": "100",  # SFW only
+                "sorting": "relevance"
             }
             url = f"https://wallhaven.cc/api/v1/search?{urllib.parse.urlencode(params)}"
             req_wh = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req_wh, timeout=10, context=ctx) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                for img in data.get("data", [])[:3]:  # Top 3 per aesthetic category
+                for img in data.get("data", [])[:6]:  # Top 6 per aesthetic category
                     img_url = img.get("path")
                     if img_url and img_url not in seen:
                         seen.add(img_url)
                         dim_x = img.get("dimension_x", "4K")
                         dim_y = img.get("dimension_y", "")
                         ext = img.get("file_type", "image/jpeg").split("/")[-1]
-                        slug = query.replace(" ", "_")
-                        safe_name = f"Aesthetic_MacBook_{slug}_{dim_x}x{dim_y}_{img.get('id')}.{ext}"
+                        slug = query.replace(" ", "_").title()
+                        safe_name = f"Aesthetic_Apple_{slug}_{dim_x}x{dim_y}_{img.get('id')}.{ext}"
                         items.append((img_url, safe_name))
         except Exception:
             continue
@@ -179,7 +189,7 @@ def fetch_all_stock_urls() -> List[Tuple[str, str]]:
 
 def sync_stock_wallpapers(target_dir: Path, notify: bool = False, quiet: bool = False) -> Dict[str, any]:
     """
-    Downloads all 6K/5K macOS, Macintosh, and aesthetic MacBook wallpapers into target_dir.
+    Downloads all 6K/5K macOS, Macintosh, and deep aesthetic Apple wallpapers into target_dir.
     Skips any already downloaded files.
     Triggers macOS notification if new wallpapers are downloaded.
     """
@@ -191,7 +201,7 @@ def sync_stock_wallpapers(target_dir: Path, notify: bool = False, quiet: bool = 
     failed = []
 
     if not quiet:
-        print(f"\n\033[1m\033[35m✦ macOS, Macintosh & Minimal MacBook Duvar Kağıdı Senkronizasyonu\033[0m")
+        print(f"\n\033[1m\033[35m✦ macOS, Macintosh & Derin Estetik Apple Duvar Kağıdı Senkronizasyonu\033[0m")
         print(f"\033[2m──────────────────────────────────────────────────────────────────\033[0m")
         print(f"Toplam taranan arşiv görseli: \033[36m{len(items)}\033[0m")
         print(f"Hedef Klasör: \033[33m{target_dir}\033[0m")
@@ -216,8 +226,15 @@ def sync_stock_wallpapers(target_dir: Path, notify: bool = False, quiet: bool = 
             print(f"[{idx}/{len(items)}] \033[32m[İndiriliyor]\033[0m {dest_name}...")
         temp_path = target_dir / f"{dest_name}.part"
 
+        # Dynamic Referer to prevent 403 Forbidden on different CDNs
+        referer = "https://wallhaven.cc/" if "wallhaven.cc" in url else "https://512pixels.net/"
+        req_headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": referer
+        }
+
         try:
-            req = urllib.request.Request(url, headers=headers)
+            req = urllib.request.Request(url, headers=req_headers)
             with urllib.request.urlopen(req, timeout=40, context=ctx) as resp:
                 with open(temp_path, "wb") as f:
                     while True:
@@ -253,8 +270,8 @@ def sync_stock_wallpapers(target_dir: Path, notify: bool = False, quiet: bool = 
     # Send macOS notification if new wallpapers were downloaded
     if notify and downloaded:
         notify_user(
-            title="Mac AeroWall Güncellendi",
-            message=f"{len(downloaded)} yeni MacBook duvar kağıdı iCloud Drive klasörünüze eklendi.",
+            title="Mac AeroWall",
+            message=f"{len(downloaded)} yeni estetik Apple/Mac duvar kağıdı indirildi.",
             subtitle="iCloud Drive / ygiido wallpapers / macos stock"
         )
 
