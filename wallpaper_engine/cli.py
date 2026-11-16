@@ -178,7 +178,7 @@ def main() -> int:
         min_height=min_h,
         ratios=ratios_list,
         categories=parsed.categories,
-        total_count=max(args.count * 2, 6)
+        total_count=max(args.count * 3, 15)
     )
 
     if not wallpapers:
@@ -216,15 +216,18 @@ def main() -> int:
         pass
 
     # 4. Download wallpapers
-    items_to_download = wallpapers[:args.count]
     results: List[DownloadResult] = []
 
     if not args.json:
-        print(f"\n{BOLD}{GREEN}⬇ {len(items_to_download)} adet görsel indiriliyor...{RESET}\n")
+        print(f"\n{BOLD}{GREEN}⬇ {args.count} adet farklı görsel indiriliyor...{RESET}\n")
 
-    for i, item in enumerate(items_to_download, 1):
+    for item in wallpapers:
+        if len([r for r in results if r.success and not r.already_existed]) >= args.count:
+            break
+
+        curr_num = len([r for r in results if r.success and not r.already_existed]) + 1
         if not args.json:
-            print(f"{BOLD}[{i}/{len(items_to_download)}]{RESET} {item.title} {DIM}({item.width}x{item.height} - {item.source}){RESET}")
+            print(f"{BOLD}[{curr_num}/{args.count}]{RESET} {item.title} {DIM}({item.width}x{item.height} - {item.source}){RESET}")
 
         res = download_wallpaper(
             item=item,
@@ -237,9 +240,11 @@ def main() -> int:
         if not args.json:
             sys.stdout.write("\n")
             if res.success:
-                status = f"{YELLOW}[Zaten Mevcut]{RESET}" if res.already_existed else f"{GREEN}[İndirildi]{RESET}"
-                size_str = format_bytes(res.file_size_bytes)
-                print(f"  {status} {res.file_path.name} ({size_str})")
+                if res.already_existed:
+                    print(f"  {YELLOW}[Zaten Mevcut - Alternatif Görsele Geçiliyor]{RESET} {res.file_path.name}")
+                else:
+                    size_str = format_bytes(res.file_size_bytes)
+                    print(f"  {GREEN}[İndirildi]{RESET} {res.file_path.name} ({size_str})")
             else:
                 print(f"  {RED}[Hata]{RESET} {res.error_message}")
             print()
@@ -268,13 +273,12 @@ def main() -> int:
         }
         print(json.dumps(output_payload, indent=2, ensure_ascii=False))
     else:
-        success_count = sum(1 for r in results if r.success)
+        new_downloads = [r for r in results if r.success and not r.already_existed]
         print(f"{DIM}──────────────────────────────────────────{RESET}")
-        print(f"{BOLD}{GREEN}✓ İşlem Tamamlandı!{RESET} {success_count}/{len(items_to_download)} görsel hazır.")
+        print(f"{BOLD}{GREEN}✓ İşlem Tamamlandı!{RESET} {len(new_downloads)}/{args.count} yeni görsel hazır.")
         print(f"{BOLD}Klasör:{RESET} {CYAN}{download_folder}{RESET}\n")
 
         # Send macOS Notification if new files downloaded
-        new_downloads = [r for r in results if r.success and not r.already_existed]
         if new_downloads:
             try:
                 from .macos_stock import notify_user

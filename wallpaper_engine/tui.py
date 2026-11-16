@@ -126,7 +126,7 @@ def search_flow():
         min_height=min_h,
         ratios=None,
         categories=parsed.categories,
-        total_count=max(count * 2, 8)
+        total_count=max(count * 3, 15)
     )
 
     if not wallpapers:
@@ -134,12 +134,15 @@ def search_flow():
         input(f"\n{DIM}Devam etmek için Enter'a basın...{RESET}")
         return
 
-    items_to_download = wallpapers[:count]
-    print(f"{GREEN}✓ {len(items_to_download)} adet görsel bulundu, indirme başlatılıyor...{RESET}\n")
+    print(f"{GREEN}✓ Kriterlere uygun adaylar bulundu. {count} adet farklı görsel indiriliyor...{RESET}\n")
 
     downloaded_files: List[Path] = []
-    for idx, item in enumerate(items_to_download, 1):
-        print(f"{BOLD}[{idx}/{len(items_to_download)}]{RESET} {item.title} {DIM}({item.width}x{item.height} - {item.source}){RESET}")
+    for item in wallpapers:
+        if len(downloaded_files) >= count:
+            break
+
+        curr_num = len(downloaded_files) + 1
+        print(f"{BOLD}[{curr_num}/{count}]{RESET} {item.title} {DIM}({item.width}x{item.height} - {item.source}){RESET}")
         res = download_wallpaper(
             item=item,
             query_slug=parsed.search_query,
@@ -148,11 +151,14 @@ def search_flow():
         )
         sys.stdout.write("\n")
         if res.success:
-            status = f"{YELLOW}[Zaten Mevcut]{RESET}" if res.already_existed else f"{GREEN}[İndirildi]{RESET}"
-            size_str = format_bytes(res.file_size_bytes)
-            print(f"  {status} {res.file_path.name} ({size_str})\n")
-            if res.file_path:
-                downloaded_files.append(res.file_path)
+            if res.already_existed:
+                print(f"  {YELLOW}[Zaten Mevcut - Alternatif Görsele Geçiliyor]{RESET} {res.file_path.name}\n")
+                continue
+            else:
+                size_str = format_bytes(res.file_size_bytes)
+                print(f"  {GREEN}[İndirildi]{RESET} {res.file_path.name} ({size_str})\n")
+                if res.file_path:
+                    downloaded_files.append(res.file_path)
         else:
             print(f"  {RED}[Hata]{RESET} {res.error_message}\n")
 
